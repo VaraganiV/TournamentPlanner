@@ -1,4 +1,4 @@
-# Tournament Planner
+# Tournament Planner (Swiss-Style)
 
 ## Overview
 
@@ -7,21 +7,26 @@ matches in a tournament
 
 Using python develop a database schema to store the game matches and players. it should also rank the players and pair them in matches.
 
-Use Swiss-style game tournaments
-
 
 ## Run the project
 
-To create Database
+**To create Database**
 
+```
 $ psql
 vagrant=> \i tournament.sql
 
+```
 
-To test
+**To test**
+
+```
 $ python tournament_test.py
 
-Output
+```
+
+
+## Output
 1. Old matches can be deleted.
 2. Player records can be deleted.
 3. After deleting, countPlayers() returns zero.
