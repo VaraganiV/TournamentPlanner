@@ -2,42 +2,44 @@
 import psycopg2
 
 # Connect to DB
-def connect():
+def connect(database_name="tournament"):
     """Connect to the PostgreSQL database."""
-    return psycopg2.connect("dbname=tournament")
+    try:
+        db = psycopg2.connect("dbname={}".format(database_name))
+        cursor = db.cursor()
+        return db, cursor
+    except:
+        print("Error connecting database")
 
 
 # Cleanup matches
 def deleteMatches():
     """Remove all the match records from the database."""
-    DB = connect()
-    cursor = DB.cursor()
+    db, cursor = connect()
     query = "DELETE from matches WHERE matchid NOTNULL;"
     cursor.execute(query)
-    DB.commit()
-    DB.close()
+    db.commit()
+    db.close()
     refreshViews()
 
 # Delete matches
 def deletePlayers():
     """Remove all player records from the database."""
-    DB = connect()
-    c = DB.cursor()
+    db, cursor = connect()
     q = "DELETE from players WHERE id NOTNULL;"
-    c.execute(q)
-    DB.commit()
-    DB.close()
+    cursor.execute(q)
+    db.commit()
+    db.close()
     refreshViews()
 
 # Count player
 def countPlayers():
     """Returns the number of players currently registered."""
-    DB = connect()
-    c = DB.cursor()
+    db, cursor = connect()
     q = "SELECT count(id) as num FROM players;"
-    c.execute(q)
-    count = int(c.fetchone()[0])
-    DB.close()
+    cursor.execute(q)
+    count = int(cursor.fetchone()[0])
+    db.close()
     return count
 
 # Register players
@@ -50,12 +52,11 @@ def registerPlayer(name):
     Args:
     name: the player's full name (need not be unique).
     """
-    DB = connect()
-    c = DB.cursor()
+    db, cursor = connect()
     q = "INSERT INTO players (name) values (%s)"
-    c.execute(q, (name,))
-    DB.commit()
-    DB.close()
+    cursor.execute(q, (name,))
+    db.commit()
+    db.close()
     refreshViews()
 
 # Players still standing
@@ -73,19 +74,10 @@ def playerStandings():
     matches: the number of matches the player has played
     """
     refreshViews()
-    DB = connect()
-    c = DB.cursor()
-    q = """
-		SELECT players.id, players.name, winners.wins, rounds.matches
-		FROM players
-		LEFT JOIN winners ON players.id = winners.player
-		LEFT JOIN rounds ON players.id = rounds.player
-		GROUP BY players.id, players.name, winners.wins, rounds.matches
-		ORDER BY winners.wins DESC;
-	"""
-    c.execute(q)
-    standings = c.fetchall()
-    DB.close()
+    db, cursor = connect()
+    cursor.execute("SELECT * from players_standing;")
+    standings = cursor.fetchall()
+    db.close()
     return standings
 
 
@@ -97,12 +89,11 @@ def reportMatch(winner, loser):
     winner:  the id number of the player who won
     loser:  the id number of the player who lost
     """
-    DB = connect()
-    c = DB.cursor()
+    db, cursor = connect()
     q = "INSERT INTO matches (winner, loser) values (%s, %s);"
-    c.execute(q, (int(winner), int(loser)))
-    DB.commit()
-    DB.close()
+    cursor.execute(q, (int(winner), int(loser)))
+    db.commit()
+    db.close()
     refreshViews()
 
 
@@ -128,6 +119,9 @@ def swissPairings():
     name2: the second player's name
     """
     standings = playerStandings()
+    if len(standings) < 2:
+        return
+
     grouped_pool = breakIntoGroups(standings, 2)
     matched_pairs = list()
 
@@ -143,10 +137,10 @@ def swissPairings():
 # Refresh views
 def refreshViews():
     """Refreshes materialized views derived from MATCHES."""
-    DB = connect()
-    c = DB.cursor()
-    c.execute("REFRESH MATERIALIZED VIEW winners;")
-    c.execute("REFRESH MATERIALIZED VIEW loosers;")
-    c.execute("REFRESH MATERIALIZED VIEW rounds;")
-    DB.commit()
-    DB.close()
+    db, cursor = connect()
+    cursor.execute("REFRESH MATERIALIZED VIEW winners;")
+    cursor.execute("REFRESH MATERIALIZED VIEW loosers;")
+    cursor.execute("REFRESH MATERIALIZED VIEW rounds;")
+    cursor.execute("REFRESH MATERIALIZED VIEW players_standing;")
+    db.commit()
+    db.close()

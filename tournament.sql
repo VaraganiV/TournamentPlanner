@@ -17,8 +17,9 @@ CREATE TABLE players(
 -- Create match table
 CREATE TABLE matches(
     matchid SERIAL PRIMARY KEY,
-    winner INTEGER REFERENCES players(id),
-    loser INTEGER REFERENCES players(id)
+    winner INTEGER REFERENCES players(id) ON DELETE CASCADE,
+    loser INTEGER REFERENCES players(id) ON DELETE CASCADE,
+    CHECK (winner <> loser)
 );
 
 -- Create winners view
@@ -44,3 +45,13 @@ CREATE MATERIALIZED VIEW rounds AS
     ON(players.id=matches.winner) OR(players.id=matches.loser)
     GROUP BY players.id
     ORDER BY players.id ASC;
+
+
+-- Create players_standing combination view
+CREATE MATERIALIZED VIEW players_standing AS
+        SELECT players.id, players.name, winners.wins, rounds.matches
+        FROM players
+        LEFT JOIN winners ON players.id = winners.player
+        LEFT JOIN rounds ON players.id = rounds.player
+        GROUP BY players.id, players.name, winners.wins, rounds.matches
+        ORDER BY winners.wins DESC;
